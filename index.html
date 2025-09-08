@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weekly Planner — Forgiving Parser</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: #f8fafb; color: #2d3748; line-height: 1.6; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+    h1 { text-align: center; font-size: 2.2rem; font-weight: 500; margin-bottom: 2rem; color: #1a202c; }
+    .week-view { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 2rem; }
+    .day-card { background: #fff; border: 2px solid #e2e8f0; border-radius: 12px; padding: 1rem; transition: all .3s ease; min-height: 160px; }
+    .day-card.today { background: #D0E7EF; border-color: #a0c4d1; box-shadow: 0 4px 12px rgba(208, 231, 239, .3); }
+    .day-header { font-size: 1.1rem; font-weight: 700; margin-bottom: .6rem; padding-bottom: .4rem; border-bottom: 1px solid #e2e8f0; }
+    .task-item { display: flex; align-items: flex-start; margin-bottom: .5rem; padding: .25rem .35rem; border-radius: 6px; }
+    .task-checkbox { width: 16px; height: 16px; margin-right: .6rem; margin-top: .15rem; cursor: pointer; accent-color: #4a90a4; }
+    .task-text { flex: 1; font-size: .95rem; }
+    .task-text.completed { text-decoration: line-through; opacity: .6; }
+    .meal-item { font-weight: 600; }
+    .input-section { background: #fff; border-radius: 12px; padding: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    .row { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+    .btn { background: #4a90a4; color: #fff; border: none; padding: .65rem 1rem; border-radius: 8px; font-size: .95rem; font-weight: 600; cursor: pointer; }
+    .btn:hover { background: #3a7889; }
+    .input-textarea { width: 100%; min-height: 220px; padding: .75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: .92rem; }
+    .empty-state { text-align: center; color: #718096; font-style: italic; padding: 1.25rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Weekly Planner</h1>
+
+    <div id="weekView" class="week-view">
+      <div class="empty-state">Paste your weekly list below and click "Generate Week".</div>
+    </div>
+
+    <div class="input-section">
+      <div class="row" style="margin-bottom:.5rem">
+        <div style="font-weight:700">Weekly List (plain text)</div>
+        <button id="generateBtn" class="btn" title="Parse and render your week">Generate Week</button>
+      </div>
+      <textarea id="weeklyInput" class="input-textarea" placeholder="Sunday:\nRest day\n\nMonday:\nL: salad\nD: black bean tacos\nFull body\nSpeed run\n\nTuesday:\nL: birthday\nD: birthday\nNo gym\nRecovery run\n\nWednesday:\nL:\nD:\nLeg day\nNo run\n\nThursday:\nL:\nD:\nUpper body\nSpeed run\n\nFriday:\nL:\nD:\nFull body\nRecovery run\n\nSaturday:\n6.2 miles"></textarea>
+      <div class="row" style="margin-top:.5rem">
+        <small style="color:#5a667a">Tips: accepts "Wed:"/"Thurs:" and weird colons/spaces from iOS.</small>
+        <button id="saveBtn" class="btn" title="Save input on this device">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const DAY_ABBRS = { Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Tues: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Thur: 'Thursday', Thurs: 'Thursday', Fri: 'Friday', Sat: 'Saturday' };
+
+    function getCurrentDay() { return DAYS[new Date().getDay()]; }
+
+    function normalizeText(t) {
+      // Replace NBSP & smart colon variants with standard space/colon
+      const nbsp = String.fromCharCode(160);
+      return t
+        .replaceAll(nbsp, ' ')
+        .replaceAll('：', ':')
+        .replace(/[\r]+/g, '')
+        .replace(/\s+$/gm, '');
+    }
+
+    function parseWeeklyList(text) {
+      const lines = normalizeText(text).split('\n');
+      const weekData = {};
+      let currentDay = '';
+
+      const isDayHeader = (s) => {
+        if (!s) return '';
+        const raw = s.trim().replace(/:$/, '');
+        const cap = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+        if (DAYS.includes(cap)) return cap;
+        if (DAY_ABBRS[cap]) return DAY_ABBRS[cap];
+        return '';
+      };
+
+      const isMeal = (s) => /^(?:L|Lunch|D|Dinner):\s*/i.test(s);
+
+      for (let raw of lines) {
+        const line = raw.trim();
+        if (!line) continue;
+
+        const asDay = isDayHeader(line);
+        if (asDay) {
+          currentDay = asDay;
+          if (!weekData[currentDay]) weekData[currentDay] = [];
+          continue;
+        }
+
+        if (!currentDay) continue;
+
+        if (isMeal(line)) {
+          const head = line.split(':')[0].trim().toUpperCase();
+          const which = head.startsWith('L') ? 'L' : 'D';
+          const value = line.slice(line.indexOf(':') + 1).trim();
+          weekData[currentDay].push({ type: 'meal', text: `${which}: ${value}`, completed: false });
+          continue;
+        }
+
+        weekData[currentDay].push({ type: 'task', text: line, completed: false });
+      }
+
+      return weekData;
+    }
+
+    function renderWeek(weekData) {
+      const weekView = document.getElementById('weekView');
+      const currentDay = getCurrentDay();
+      weekView.innerHTML = '';
+
+      DAYS.forEach(day => {
+        const card = document.createElement('div');
+        card.className = `day-card ${day === currentDay ? 'today' : ''}`;
+        const head = document.createElement('div');
+        head.className = 'day-header';
+        head.textContent = day;
+        card.appendChild(head);
+
+        const items = weekData[day] || [];
+        if (!items.length) {
+          const empty = document.createElement('div');
+          empty.style.color = '#a0aec0';
+          empty.style.fontStyle = 'italic';
+          empty.textContent = 'No tasks scheduled';
+          card.appendChild(empty);
+        } else {
+          items.forEach((item) => {
+            const row = document.createElement('div');
+            row.className = 'task-item';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'task-checkbox';
+            cb.checked = !!item.completed;
+            const txt = document.createElement('div');
+            txt.className = `task-text ${item.completed ? 'completed' : ''} ${item.type === 'meal' ? 'meal-item' : ''}`;
+            txt.textContent = item.text;
+            cb.addEventListener('change', () => {
+              txt.classList.toggle('completed', cb.checked);
+              item.completed = cb.checked;
+              persistWeekData(weekData);
+            });
+            row.appendChild(cb);
+            row.appendChild(txt);
+            card.appendChild(row);
+          });
+        }
+        weekView.appendChild(card);
+      });
+    }
+
+    function persistWeekData(data) { try { localStorage.setItem('weeklyPlanner.weekData', JSON.stringify(data)); } catch (_) {} }
+    function restoreWeekData() { try { return JSON.parse(localStorage.getItem('weeklyPlanner.weekData') || '{}'); } catch (_) { return {}; } }
+    function persistInput(text) { try { localStorage.setItem('weeklyPlanner.input', text); } catch (_) {} }
+    function restoreInput() { try { return localStorage.getItem('weeklyPlanner.input') || ''; } catch (_) { return ''; } }
+
+    const generateBtn = document.getElementById('generateBtn');
+    if (generateBtn) generateBtn.addEventListener('click', () => {
+      const input = document.getElementById('weeklyInput').value;
+      if (!input.trim()) { alert('Please paste your weekly list first!'); return; }
+      const weekData = parseWeeklyList(input);
+      renderWeek(weekData);
+      persistWeekData(weekData);
+      persistInput(input);
+    });
+
+    const saveBtn = document.getElementById('saveBtn');
+    if (saveBtn) saveBtn.addEventListener('click', () => {
+      const input = document.getElementById('weeklyInput').value;
+      persistInput(input);
+      alert('Saved!');
+    });
+
+    // On load
+    const weeklyInput = document.getElementById('weeklyInput');
+    const savedInput = restoreInput();
+    if (savedInput) {
+      weeklyInput.value = savedInput;
+      const restored = restoreWeekData();
+      if (Object.keys(restored).length) renderWeek(restored);
+    }
+  </script>
+</body>
+</html>
