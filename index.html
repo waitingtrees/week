@@ -3,184 +3,395 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Weekly Planner — Forgiving Parser</title>
+  <title>Weekly Plan</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: #f8fafb; color: #2d3748; line-height: 1.6; }
-    .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-    h1 { text-align: center; font-size: 2.2rem; font-weight: 500; margin-bottom: 2rem; color: #1a202c; }
-    .week-view { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 2rem; }
-    .day-card { background: #fff; border: 2px solid #e2e8f0; border-radius: 12px; padding: 1rem; transition: all .3s ease; min-height: 160px; }
-    .day-card.today { background: #D0E7EF; border-color: #a0c4d1; box-shadow: 0 4px 12px rgba(208, 231, 239, .3); }
-    .day-header { font-size: 1.1rem; font-weight: 700; margin-bottom: .6rem; padding-bottom: .4rem; border-bottom: 1px solid #e2e8f0; }
-    .task-item { display: flex; align-items: flex-start; margin-bottom: .5rem; padding: .25rem .35rem; border-radius: 6px; }
-    .task-checkbox { width: 16px; height: 16px; margin-right: .6rem; margin-top: .15rem; cursor: pointer; accent-color: #4a90a4; }
-    .task-text { flex: 1; font-size: .95rem; }
-    .task-text.completed { text-decoration: line-through; opacity: .6; }
-    .meal-item { font-weight: 600; }
-    .input-section { background: #fff; border-radius: 12px; padding: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
-    .row { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; justify-content: space-between; }
-    .btn { background: #4a90a4; color: #fff; border: none; padding: .65rem 1rem; border-radius: 8px; font-size: .95rem; font-weight: 600; cursor: pointer; }
-    .btn:hover { background: #3a7889; }
-    .input-textarea { width: 100%; min-height: 220px; padding: .75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: .92rem; }
-    .empty-state { text-align: center; color: #718096; font-style: italic; padding: 1.25rem; }
+    
+    body { 
+      font-family: 'Georgia', 'Times New Roman', serif;
+      background: #1e3a8a;
+      color: #d0e7ef;
+      line-height: 1.6;
+      padding: 2rem 1rem;
+    }
+    
+    .container { 
+      max-width: 1200px; 
+      margin: 0 auto;
+      background: #1e3a8a;
+      box-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 2rem;
+      background: #1e3a8a;
+      border-bottom: 2px solid #d0e7ef;
+    }
+    
+    h1 { 
+      font-size: 2.5rem;
+      font-weight: normal;
+      color: #d0e7ef;
+      letter-spacing: -1px;
+    }
+    
+    .date-label {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      color: #d0e7ef;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    
+    .week-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(2, 380px);
+      gap: 0;
+      background: #1e3a8a;
+    }
+    
+    .day-cell {
+      position: relative;
+      padding: 1rem;
+      border-right: 2px solid #d0e7ef;
+      border-bottom: 2px solid #d0e7ef;
+      background: #1e3a8a;
+    }
+    
+    .day-cell:nth-child(4n) { border-right: none; }
+    .day-cell:nth-child(n+5) { border-bottom: none; }
+    
+    .day-label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #d0e7ef;
+      margin-bottom: 0.75rem;
+      text-align: center;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #d0e7ef;
+    }
+    
+    .day-number {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.75rem;
+      width: 26px;
+      height: 26px;
+      background: #d0e7ef;
+      color: #1e3a8a;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+    
+    .task-list { margin-top: 0.5rem; }
+    .default-tasks { padding-bottom: 0.75rem; margin-bottom: 0.75rem; border-bottom: 1px solid #d0e7ef; }
+
+    .task-item { display: flex; align-items: center; gap: .5rem; margin-bottom: 0.5rem; font-size: 0.9rem; }
+    .task-item.is-completed .task-input { text-decoration: line-through; opacity: .5; }
+
+    .default-task-label { width: 80px; min-width: 80px; font-weight: 700; pointer-events: none; }
+
+    .task-checkbox { width: 16px; height: 16px; accent-color: #d0e7ef; cursor: pointer; opacity: 0.8; }
+    .task-checkbox:checked { opacity: 1; }
+    
+    .task-input { flex: 1; border: none; outline: none; font-family: 'Georgia', 'Times New Roman', serif; font-size: 0.9rem; background: transparent; padding: 0; line-height: 1.4; color: #d0e7ef; }
+    .task-input::placeholder { color: #d0e7ef; opacity: 0.5; }
+    .task-input:focus { background: rgba(208, 231, 239, 0.1); padding: 0 4px; border-radius: 2px; }
+
+    /* Camouflage the Add task buttons instead of removing them */
+    .add-task-btn { 
+      display: inline-block;
+      margin-top: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.8rem;
+      background: #1e3a8a;      /* same as body bg */
+      color: #1e3a8a;            /* same as bg so text is invisible */
+      border: 1px dashed #1e3a8a;/* blend border */
+      border-radius: 4px;
+      cursor: text;              /* feels like a text area */
+    }
+    .add-task-btn:hover, .add-task-btn:focus { background: #1e3a8a; color: #1e3a8a; border-color: #1e3a8a; }
+    .add-task-btn:focus-visible { outline: 2px dashed rgba(208,231,239,0.25); outline-offset: 2px; }
+    
+    @media (max-width: 768px) {
+      .week-grid { grid-template-columns: 1fr; grid-template-rows: auto; }
+      .day-cell { min-height: 320px; border-right: none; border-bottom: 2px solid #d0e7ef; }
+      .day-cell:last-child { border-bottom: none; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Weekly Planner</h1>
-
-    <div id="weekView" class="week-view">
-      <div class="empty-state">Paste your weekly list below and click "Generate Week".</div>
+    <div class="header">
+      <h1>Weekly Plan</h1>
+      <div class="date-label" id="date-label">SEPTEMBER 2025</div>
     </div>
 
-    <div class="input-section">
-      <div class="row" style="margin-bottom:.5rem">
-        <div style="font-weight:700">Weekly List (plain text)</div>
-        <button id="generateBtn" class="btn" title="Parse and render your week">Generate Week</button>
+    <div class="week-grid">
+      <div class="day-cell">
+        <div class="day-label">Weekly List</div>
+        <div class="task-list">
+          <div class="custom-tasks" id="weekly-list"></div>
+          <button class="add-task-btn" onclick="addTask('weekly-list')" aria-label="Add task to weekly list">+ Add task</button>
+        </div>
       </div>
-      <textarea id="weeklyInput" class="input-textarea" placeholder="Sunday:\nRest day\n\nMonday:\nL: salad\nD: black bean tacos\nFull body\nSpeed run\n\nTuesday:\nL: birthday\nD: birthday\nNo gym\nRecovery run\n\nWednesday:\nL:\nD:\nLeg day\nNo run\n\nThursday:\nL:\nD:\nUpper body\nSpeed run\n\nFriday:\nL:\nD:\nFull body\nRecovery run\n\nSaturday:\n6.2 miles"></textarea>
-      <div class="row" style="margin-top:.5rem">
-        <small style="color:#5a667a">Tips: accepts "Wed:"/"Thurs:" and weird colons/spaces from iOS.</small>
-        <button id="saveBtn" class="btn" title="Save input on this device">Save</button>
+      
+      <div class="day-cell">
+        <div class="day-label">Monday</div>
+        <div class="day-number"></div>
+        <div class="task-list">
+          <div class="default-tasks" id="monday-defaults"></div>
+          <div class="custom-tasks" id="monday-custom"></div>
+          <button class="add-task-btn" onclick="addTask('monday-custom')" aria-label="Add task to Monday">+ Add task</button>
+        </div>
+      </div>
+      
+      <div class="day-cell">
+        <div class="day-label">Tuesday</div>
+        <div class="day-number"></div>
+        <div class="task-list">
+          <div class="default-tasks" id="tuesday-defaults"></div>
+          <div class="custom-tasks" id="tuesday-custom"></div>
+          <button class="add-task-btn" onclick="addTask('tuesday-custom')" aria-label="Add task to Tuesday">+ Add task</button>
+        </div>
+      </div>
+      
+      <div class="day-cell">
+        <div class="day-label">Wednesday</div>
+        <div class="day-number"></div>
+        <div class="task-list">
+          <div class="default-tasks" id="wednesday-defaults"></div>
+          <div class="custom-tasks" id="wednesday-custom"></div>
+          <button class="add-task-btn" onclick="addTask('wednesday-custom')" aria-label="Add task to Wednesday">+ Add task</button>
+        </div>
+      </div>
+      
+      <div class="day-cell">
+        <div class="day-label">Thursday</div>
+        <div class="day-number"></div>
+        <div class="task-list">
+          <div class="default-tasks" id="thursday-defaults"></div>
+          <div class="custom-tasks" id="thursday-custom"></div>
+          <button class="add-task-btn" onclick="addTask('thursday-custom')" aria-label="Add task to Thursday">+ Add task</button>
+        </div>
+      </div>
+      
+      <div class="day-cell">
+        <div class="day-label">Friday</div>
+        <div class="day-number"></div>
+        <div class="task-list">
+          <div class="default-tasks" id="friday-defaults"></div>
+          <div class="custom-tasks" id="friday-custom"></div>
+          <button class="add-task-btn" onclick="addTask('friday-custom')" aria-label="Add task to Friday">+ Add task</button>
+        </div>
+      </div>
+      
+      <div class="day-cell">
+        <div class="day-label">Saturday</div>
+        <div class="day-number"></div>
+        <div class="task-list">
+          <div class="default-tasks" id="saturday-defaults"></div>
+          <div class="custom-tasks" id="saturday-custom"></div>
+          <button class="add-task-btn" onclick="addTask('saturday-custom')" aria-label="Add task to Saturday">+ Add task</button>
+        </div>
+      </div>
+      
+      <div class="day-cell">
+        <div class="day-label">Sunday</div>
+        <div class="day-number"></div>
+        <div class="task-list">
+          <div class="default-tasks" id="sunday-defaults"></div>
+          <div class="custom-tasks" id="sunday-custom"></div>
+          <button class="add-task-btn" onclick="addTask('sunday-custom')" aria-label="Add task to Sunday">+ Add task</button>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    const DAY_ABBRS = { Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Tues: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Thur: 'Thursday', Thurs: 'Thursday', Fri: 'Friday', Sat: 'Saturday' };
+    let plannerData = {};
+    const defaultTasks = [
+      { label: 'Lunch:', value: '', completed: false },
+      { label: 'Dinner:', value: '', completed: false },
+      { label: 'Workout:', value: '', completed: false },
+      { label: 'Run:', value: '', completed: false }
+    ];
 
-    function getCurrentDay() { return DAYS[new Date().getDay()]; }
-
-    function normalizeText(t) {
-      // Replace NBSP & smart colon variants with standard space/colon
-      const nbsp = String.fromCharCode(160);
-      return t
-        .replaceAll(nbsp, ' ')
-        .replaceAll('：', ':')
-        .replace(/[\r]+/g, '')
-        .replace(/\s+$/gm, '');
+    function startOfWeek(date) {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diffToMonday = (day === 0 ? -6 : 1) - day;
+      d.setDate(d.getDate() + diffToMonday);
+      d.setHours(0,0,0,0);
+      return d;
     }
 
-    function parseWeeklyList(text) {
-      const lines = normalizeText(text).split('\n');
-      const weekData = {};
-      let currentDay = '';
+    function getDayNumberForDay(dayOffset) {
+      const monday = startOfWeek(new Date());
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + dayOffset);
+      return d.getDate();
+    }
 
-      const isDayHeader = (s) => {
-        if (!s) return '';
-        const raw = s.trim().replace(/:$/, '');
-        const cap = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
-        if (DAYS.includes(cap)) return cap;
-        if (DAY_ABBRS[cap]) return DAY_ABBRS[cap];
-        return '';
-      };
+    function updateDayNumbersAndHeader() {
+      const dayNumbers = document.querySelectorAll('.day-number');
+      const monthNames = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+      const monday = startOfWeek(new Date());
+      const header = document.getElementById('date-label');
+      header.textContent = `${monthNames[monday.getMonth()]} ${monday.getFullYear()}`;
+      for (let i=0;i<7;i++) { dayNumbers[i].textContent = getDayNumberForDay(i); }
+    }
 
-      const isMeal = (s) => /^(?:L|Lunch|D|Dinner):\s*/i.test(s);
+    function createTaskElement(listId, task, isDefault = false) {
+      const taskItem = document.createElement('div');
+      taskItem.className = 'task-item';
 
-      for (let raw of lines) {
-        const line = raw.trim();
-        if (!line) continue;
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'task-checkbox';
+      checkbox.checked = !!task.completed;
 
-        const asDay = isDayHeader(line);
-        if (asDay) {
-          currentDay = asDay;
-          if (!weekData[currentDay]) weekData[currentDay] = [];
-          continue;
-        }
+      let input;
 
-        if (!currentDay) continue;
-
-        if (isMeal(line)) {
-          const head = line.split(':')[0].trim().toUpperCase();
-          const which = head.startsWith('L') ? 'L' : 'D';
-          const value = line.slice(line.indexOf(':') + 1).trim();
-          weekData[currentDay].push({ type: 'meal', text: `${which}: ${value}`, completed: false });
-          continue;
-        }
-
-        weekData[currentDay].push({ type: 'task', text: line, completed: false });
+      if (isDefault) {
+        const label = document.createElement('span');
+        label.className = 'default-task-label';
+        label.textContent = task.label;
+        input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'task-input';
+        input.value = task.value || '';
+        taskItem.appendChild(checkbox);
+        taskItem.appendChild(label);
+        taskItem.appendChild(input);
+      } else {
+        input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'task-input';
+        input.value = task.text || '';
+        taskItem.appendChild(checkbox);
+        taskItem.appendChild(input);
       }
 
-      return weekData;
+      if (task.completed) taskItem.classList.add('is-completed');
+
+      checkbox.addEventListener('change', () => {
+        task.completed = checkbox.checked;
+        taskItem.classList.toggle('is-completed', checkbox.checked);
+        saveData();
+      });
+
+      input.addEventListener('input', () => {
+        if (isDefault) { task.value = input.value; } else { task.text = input.value; }
+        saveData();
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && listId) {
+          e.preventDefault();
+          addTask(listId);
+        }
+      });
+
+      return taskItem;
     }
 
-    function renderWeek(weekData) {
-      const weekView = document.getElementById('weekView');
-      const currentDay = getCurrentDay();
-      weekView.innerHTML = '';
+    function addTask(listId, text = '') {
+      if (!plannerData[listId]) plannerData[listId] = [];
+      const task = { text, completed: false };
+      plannerData[listId].push(task);
+      const list = document.getElementById(listId);
+      const el = createTaskElement(listId, task, false);
+      list.appendChild(el);
+      el.querySelector('.task-input').focus();
+      saveData();
+    }
 
-      DAYS.forEach(day => {
-        const card = document.createElement('div');
-        card.className = `day-card ${day === currentDay ? 'today' : ''}`;
-        const head = document.createElement('div');
-        head.className = 'day-header';
-        head.textContent = day;
-        card.appendChild(head);
-
-        const items = weekData[day] || [];
-        if (!items.length) {
-          const empty = document.createElement('div');
-          empty.style.color = '#a0aec0';
-          empty.style.fontStyle = 'italic';
-          empty.textContent = 'No tasks scheduled';
-          card.appendChild(empty);
-        } else {
-          items.forEach((item) => {
-            const row = document.createElement('div');
-            row.className = 'task-item';
-            const cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.className = 'task-checkbox';
-            cb.checked = !!item.completed;
-            const txt = document.createElement('div');
-            txt.className = `task-text ${item.completed ? 'completed' : ''} ${item.type === 'meal' ? 'meal-item' : ''}`;
-            txt.textContent = item.text;
-            cb.addEventListener('change', () => {
-              txt.classList.toggle('completed', cb.checked);
-              item.completed = cb.checked;
-              persistWeekData(weekData);
-            });
-            row.appendChild(cb);
-            row.appendChild(txt);
-            card.appendChild(row);
-          });
-        }
-        weekView.appendChild(card);
+    function initializeDefaultTasks(dayName) {
+      const defaultsId = `${dayName}-defaults`;
+      const defaultsContainer = document.getElementById(defaultsId);
+      if (!plannerData[defaultsId]) {
+        plannerData[defaultsId] = JSON.parse(JSON.stringify(defaultTasks));
+      }
+      defaultsContainer.innerHTML = '';
+      plannerData[defaultsId].forEach(task => {
+        const el = createTaskElement(defaultsId, task, true);
+        defaultsContainer.appendChild(el);
       });
     }
 
-    function persistWeekData(data) { try { localStorage.setItem('weeklyPlanner.weekData', JSON.stringify(data)); } catch (_) {} }
-    function restoreWeekData() { try { return JSON.parse(localStorage.getItem('weeklyPlanner.weekData') || '{}'); } catch (_) { return {}; } }
-    function persistInput(text) { try { localStorage.setItem('weeklyPlanner.input', text); } catch (_) {} }
-    function restoreInput() { try { return localStorage.getItem('weeklyPlanner.input') || ''; } catch (_) { return ''; } }
-
-    const generateBtn = document.getElementById('generateBtn');
-    if (generateBtn) generateBtn.addEventListener('click', () => {
-      const input = document.getElementById('weeklyInput').value;
-      if (!input.trim()) { alert('Please paste your weekly list first!'); return; }
-      const weekData = parseWeeklyList(input);
-      renderWeek(weekData);
-      persistWeekData(weekData);
-      persistInput(input);
-    });
-
-    const saveBtn = document.getElementById('saveBtn');
-    if (saveBtn) saveBtn.addEventListener('click', () => {
-      const input = document.getElementById('weeklyInput').value;
-      persistInput(input);
-      alert('Saved!');
-    });
-
-    // On load
-    const weeklyInput = document.getElementById('weeklyInput');
-    const savedInput = restoreInput();
-    if (savedInput) {
-      weeklyInput.value = savedInput;
-      const restored = restoreWeekData();
-      if (Object.keys(restored).length) renderWeek(restored);
+    function loadCustomTasks() {
+      Object.keys(plannerData).forEach(listId => {
+        if (listId.includes('-custom') || listId === 'weekly-list') {
+          const list = document.getElementById(listId);
+          if (list) {
+            list.innerHTML = '';
+            plannerData[listId].forEach(task => {
+              const el = createTaskElement(listId, task, false);
+              list.appendChild(el);
+            });
+          }
+        }
+      });
     }
+
+    function attachClickToAreas() {
+      document.querySelectorAll('.custom-tasks').forEach(area => {
+        area.addEventListener('click', function(e) {
+          if (e.target === this) addTask(this.id);
+        });
+      });
+    }
+
+    function loadData() {
+      const saved = localStorage.getItem('weeklyPlanner.data');
+      if (saved) plannerData = JSON.parse(saved);
+      const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+      days.forEach(initializeDefaultTasks);
+      loadCustomTasks();
+      attachClickToAreas();
+    }
+
+    function saveData() { localStorage.setItem('weeklyPlanner.data', JSON.stringify(plannerData)); }
+
+    function checkAndClearWeekly() {
+      const now = new Date();
+      const lastCleared = localStorage.getItem('weeklyPlanner.lastCleared');
+      const lastClearDate = lastCleared ? new Date(lastCleared) : null;
+      const isMonday = now.getDay() === 1;
+      const isAfter3AM = now.getHours() >= 3;
+      if (isMonday && isAfter3AM) {
+        if (!lastClearDate || (now - lastClearDate) > (6 * 24 * 60 * 60 * 1000)) {
+          plannerData = {};
+          localStorage.removeItem('weeklyPlanner.data');
+          localStorage.setItem('weeklyPlanner.lastCleared', now.toISOString());
+          const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+          days.forEach(day => {
+            const d = document.getElementById(`${day}-defaults`);
+            const c = document.getElementById(`${day}-custom`);
+            if (d) d.innerHTML='';
+            if (c) c.innerHTML='';
+          });
+          const weeklyList = document.getElementById('weekly-list');
+          if (weeklyList) weeklyList.innerHTML='';
+        }
+      }
+    }
+
+    checkAndClearWeekly();
+    updateDayNumbersAndHeader();
+    loadData();
+    setInterval(() => { checkAndClearWeekly(); updateDayNumbersAndHeader(); }, 60*60*1000);
   </script>
 </body>
 </html>
